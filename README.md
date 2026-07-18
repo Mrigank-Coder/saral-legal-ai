@@ -12,13 +12,56 @@ every claim cited back to an Act and Section.
   can steal it from the browser's network tab and run up your bill. The app
   calls your own `/api/ai` serverless function, which holds the key
   server-side. See `api/ai.js`. It currently calls **Groq's** API
-  (OpenAI-compatible, model `llama-3.3-70b-versatile`).
+  (OpenAI-compatible), using `openai/gpt-oss-120b` for text and
+  `qwen/qwen3.6-27b` for vision/OCR (see "Languages and scanned documents" below).
 - The case file (your saved explanations/drafts) now persists in `localStorage`,
   so it survives a page refresh, with delete-one and clear-all controls.
 - Added a short "How it works" strip, toast notifications, a search box in the
   Library tab, favicon/meta tags for link previews, an error boundary, keyboard
   focus states, and a scrollable tab bar on narrow screens.
 - Errors from the AI call now surface the real reason instead of a generic message.
+- **22 languages instead of 2:** the "Explain" tab can now translate its answer
+  into English, Hindi, or any of the 20 other languages listed in the Eighth
+  Schedule to the Constitution (Bengali, Telugu, Marathi, Tamil, Gujarati,
+  Urdu, Kannada, Odia, Punjabi, Malayalam, Assamese, Maithili, Santali,
+  Kashmiri, Nepali, Sindhi, Konkani, Dogri, Manipuri, Bodo). Pick one from the
+  dropdown next to the answer; it's translated and cached on demand, so
+  switching back and forth doesn't re-call the AI. Translation quality will be
+  strongest for the languages with the most training data behind them (Hindi,
+  Bengali, Tamil, Telugu, Marathi, and similar) — treat the less-resourced
+  scripts as a helpful draft, not a certified translation.
+- **Scanned documents:** "Explain" now has an "Upload a photo or scan" button
+  that accepts a JPG/PNG photo or a PDF. It's transcribed by a vision model
+  and dropped into the text box for you to skim and correct before submitting
+  — OCR on messy phone photos or old scans isn't perfect, so this review step
+  matters. PDFs are read up to 5 pages per upload (the vision model's limit
+  per request); longer documents are truncated with a note telling you so.
+
+## Languages and scanned documents — how they work
+
+[#languages-and-scanned-documents--how-they-work](#languages-and-scanned-documents--how-they-work)
+
+- **Translation** (`TRANSLATE_SYSTEM`/`translateSystemFor` in `src/App.jsx`)
+  sends the already-generated English explanation to `openai/gpt-oss-120b`
+  with instructions to translate it into the selected language, preserving
+  Act/Section citations untranslated. Each language is only translated once
+  per answer and then cached in that answer's `translations` object.
+- **Scanned-document OCR** (`OCR_SYSTEM`, `fileToOcrImages` in `src/App.jsx`)
+  converts the uploaded file into one or more base64 JPEGs in the browser
+  (images are downscaled; PDF pages are rendered client-side with
+  `pdfjs-dist`), then sends them to `/api/ai` with an `images` field. The
+  backend detects that field and routes the request to `qwen/qwen3.6-27b`,
+  Groq's current multimodal model, instead of the text-only model — see
+  `api/ai.js`.
+- Both features reuse the existing `/api/ai` proxy and `GROQ_API_KEY`, so no
+  new environment variables or accounts are needed beyond what step 1 already
+  sets up.
+- Groq's model lineup changes fairly often — `qwen/qwen3.6-27b` is currently
+  a preview model, meaning Groq could swap or deprecate it with limited
+  notice. If OCR uploads start failing, check
+  <https://console.groq.com/docs/deprecations> for a replacement vision model
+  and update `VISION_MODEL` in `api/ai.js`.
+
 
 ## Run it locally
 
