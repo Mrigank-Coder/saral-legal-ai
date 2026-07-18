@@ -10,9 +10,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { system, userPrompt } = req.body || {};
+  const { system, userPrompt, maxTokens } = req.body || {};
   if (!userPrompt || typeof userPrompt !== "string") {
     return res.status(400).json({ error: "Missing userPrompt" });
+  }
+  const safeMaxTokens = Number.isFinite(maxTokens)
+    ? Math.min(Math.max(maxTokens, 256), 4000)
+    : 1000;
+  if (userPrompt.length > 60000) {
+    return res.status(400).json({ error: "Document is too long. Please paste a shorter excerpt (under ~60,000 characters)." });
   }
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -29,7 +35,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
-        max_tokens: 1000,
+        max_tokens: safeMaxTokens,
         messages: [
           { role: "system", content: system || "" },
           { role: "user", content: userPrompt },
