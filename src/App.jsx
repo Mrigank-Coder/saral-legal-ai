@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Scale, FileText, Search, Loader2, Copy, Download, AlertTriangle, CheckCircle2,
   BookOpen, Check, Folder, X, Languages, Sparkles, Clock, ChevronDown, Command, Library,
-  ShieldCheck, GitBranch, MessageSquareQuote, Trash2, ArrowRight, ScanLine, Camera,
+  ShieldCheck, GitBranch, MessageSquareQuote, Trash2, ArrowRight, ScanLine, Camera, FileWarning, Upload,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -18,8 +18,25 @@ const CORPUS = [
   { act: "Consumer Protection Act, 2019", section: "35", title: "Filing a complaint before District Commission", text: "A complaint can be filed by the affected consumer, a recognized consumer association, or the government, before the District Consumer Disputes Redressal Commission, for defective goods, deficient services, unfair trade practices, or overcharging." },
   { act: "Consumer Protection Act, 2019", section: "39", title: "Reliefs available", text: "The Commission can order removal of defects, replacement of goods, refund of the price paid, compensation for loss or injury, discontinuation of unfair practices, and payment of costs." },
   { act: "Consumer Protection Act, 2019", section: "69", title: "Limitation period", text: "A complaint must generally be filed within two years from the date the cause of action arose, though the Commission may allow a delayed complaint for sufficient cause." },
-  { act: "Payment of Wages Act, 1936", section: "5", title: "Time of payment of wages", text: "Wages must be paid before the expiry of the 7th day (for establishments with fewer than 1000 workers) or the 10th day of the following wage period, and must be paid on a working day." },
-  { act: "Payment of Wages Act, 1936", section: "15", title: "Claims for delayed or deducted wages", text: "An employee whose wages are delayed or unlawfully deducted can apply to the designated authority, who may direct payment of the wages due plus compensation, generally within 12 months of the deduction or delay." },
+  { act: "Code on Wages, 2019", section: "17", title: "Time limit for payment of wages", text: "Wages paid daily must be settled the same day; weekly, within the following working day; fortnightly, within two days of the fortnight ending; and monthly, within seven days of the month ending. If an employee is removed, dismissed, retrenched, or resigns, wages due must be paid within two working days. This replaced the Payment of Wages Act, 1936, which was repealed when the four labour codes took effect on 21 November 2025." },
+  { act: "Code on Wages, 2019", section: "45", title: "Claims for unpaid or delayed wages", text: "An employee whose wages are delayed, underpaid, or unlawfully deducted can apply to the designated claims authority, which may award the amount due plus compensation. The application must generally be filed within three years of the claim arising." },
+  { act: "Constitution of India", section: "14", title: "Equality before law", text: "The State shall not deny to any person equality before the law or the equal protection of the laws within the territory of India. This applies to citizens and non-citizens alike, and bars arbitrary or discriminatory State action." },
+  { act: "Constitution of India", section: "19", title: "Protection of certain freedoms", text: "All citizens have the right to freedom of speech and expression, to assemble peaceably, to form associations or unions, to move freely and reside in any part of India, and to practise any profession or carry on any occupation, trade, or business — each subject to reasonable restrictions the State may impose by law (such as public order, decency, or security)." },
+  { act: "Constitution of India", section: "21", title: "Protection of life and personal liberty", text: "No person shall be deprived of their life or personal liberty except according to a procedure established by law. Courts have read this broadly over the years to cover related rights such as privacy, livelihood, a clean environment, and human dignity, not just physical freedom from detention." },
+  { act: "Constitution of India", section: "21A", title: "Right to education", text: "The State must provide free and compulsory education to all children between the ages of six and fourteen, in a manner the State may by law determine." },
+  { act: "Constitution of India", section: "32", title: "Right to constitutional remedies", text: "A person may move the Supreme Court directly to enforce the fundamental rights guaranteed under Part III of the Constitution, and the Court may issue directions or writs (such as habeas corpus or mandamus) for that purpose. Dr. B.R. Ambedkar called this 'the heart and soul' of the Constitution." },
+  { act: "Model Tenancy Act, 2021", section: "4", title: "Tenancy agreement and security deposit", text: "Landlord and tenant must sign a written agreement stating the rent, tenancy period, and terms for rent revision and security deposit, and must inform the Rent Authority within two months of signing. The security deposit cannot exceed two months' rent for residential premises or six months' rent for non-residential premises. This Act only applies in states/UTs that have adopted it or a similar state law — most states still run their own older Rent Control Act." },
+  { act: "Model Tenancy Act, 2021", section: "21", title: "Grounds for eviction", text: "A landlord seeking eviction must apply to the Rent Authority, which can order eviction for reasons including: refusal to pay the agreed rent, failure to pay rent for more than two consecutive months, occupying part or all of the premises without the landlord's written consent, misuse of the premises after a written notice to stop, or unauthorised structural changes." },
+  { act: "Model Tenancy Act, 2021", section: "23", title: "Liability for overstaying after tenancy ends", text: "A tenant who doesn't vacate after the tenancy period ends (and isn't renewed), or after an eviction order, must pay twice the monthly rent for the first two months of overstay, and four times the monthly rent for every month after that until they vacate." },
+  { act: "Bharatiya Nyaya Sanhita, 2023", section: "318", title: "Cheating", text: "Whoever deceives a person and thereby dishonestly induces them to deliver property, or to do or not do something they wouldn't otherwise have done, commits cheating. General cheating carries imprisonment up to 3 years or a fine or both; cheating by someone bound by law or contract to protect the victim's interests carries up to 5 years. This replaced Sections 415, 417, and 420 of the Indian Penal Code when the BNS came into force on 1 July 2024." },
+  { act: "Bharatiya Nyaya Sanhita, 2023", section: "351", title: "Criminal intimidation", text: "Threatening someone with injury to their person, reputation, or property (or to someone they care about), with intent to cause alarm or to make them act or refrain from acting against their will, is criminal intimidation. It is punishable with imprisonment up to 2 years, or a fine, or both; threats of death or grievous hurt carry a higher punishment. This replaced Section 506 of the Indian Penal Code." },
+  { act: "Bharatiya Nyaya Sanhita, 2023", section: "80", title: "Dowry death", text: "If a married woman dies from burns, bodily injury, or otherwise than under normal circumstances within seven years of marriage, and it's shown she was subjected to cruelty or harassment for dowry by her husband or his relatives shortly before her death, that death is treated as a dowry death, and the husband or relative is deemed to have caused it — punishable with a minimum of 7 years' imprisonment, up to life. This replaced Section 304B of the Indian Penal Code." },
+  { act: "Bharatiya Nyaya Sanhita, 2023", section: "85", title: "Cruelty by husband or his relatives", text: "A husband or his relative who subjects a married woman to cruelty — wilful conduct likely to drive her to suicide or cause grave injury, or harassment to coerce her or her family into meeting an unlawful demand for property — is punishable with imprisonment up to 3 years and a fine. This replaced Section 498A of the Indian Penal Code." },
+  { act: "Protection of Women from Domestic Violence Act, 2005", section: "12", title: "Applying for relief", text: "An aggrieved woman (or a Protection Officer or another person on her behalf) can apply to a Magistrate for relief under the Act, including protection orders, residence orders, monetary relief, custody orders, or compensation. The Magistrate is expected to fix the first hearing within three days of the application being filed." },
+  { act: "Protection of Women from Domestic Violence Act, 2005", section: "17", title: "Right to reside in a shared household", text: "Every woman in a domestic relationship has the right to live in the shared household, regardless of whether she has any ownership or title in it. She cannot be evicted or excluded from it except through the procedure established by law." },
+  { act: "Motor Vehicles Act, 1988", section: "164", title: "Compensation without proof of fault", text: "In case of death or grievous injury from a motor vehicle accident, the victim or their legal heirs can claim fixed compensation from the vehicle owner/insurer without having to prove anyone's fault or negligence. If a larger amount is later awarded under another provision or law, this amount is adjusted against it." },
+  { act: "Motor Vehicles Act, 1988", section: "166", title: "Application for compensation", text: "A person injured, the owner of damaged property, or the legal representatives of someone killed in a motor accident can apply for compensation to the Motor Accident Claims Tribunal with jurisdiction over the place of the accident, where the claimant resides, or where the vehicle owner resides. Since a 2019 amendment, applications should generally be filed within six months of the accident, though the Tribunal can condone delay for sufficient cause." },
+  { act: "Maternity Benefit Act, 1961", section: "5", title: "Right to maternity benefit", text: "A woman who has worked at least 80 days in the 12 months before her expected delivery date is entitled to paid maternity leave: 26 weeks for her first two children (up to 8 weeks before the expected date), and 12 weeks for the third child onward. Commissioning and adopting mothers are entitled to 12 weeks from the date the child is handed over." },
 ];
 
 const TEMPLATES = {
@@ -92,6 +109,8 @@ const EXPLAIN_EXAMPLES = [
   "I filed an RTI 45 days ago and got no reply",
   "Shopkeeper won't refund a defective product",
   "My employer hasn't paid my full salary this month",
+  "My landlord is keeping my full deposit after I moved out",
+  "I was in a road accident and want to know what compensation I can claim",
 ];
 
 const GENERATE_EXAMPLES = [
@@ -276,6 +295,29 @@ Rules:
 3. If there isn't enough information for a placeholder, set it to null. Never invent facts, names, dates, or amounts.
 4. Keep values concise, in formal document register where appropriate.`;
 
+const SIMPLIFY_SYSTEM = `You help ordinary people understand long legal documents, contracts, or terms & conditions BEFORE they agree to them — the kind of document people usually scroll past and click "I agree" on.
+Rules:
+1. Base your analysis only on the document text provided. Do not assume facts not in the text.
+2. Write in plain, simple English. Briefly explain any unavoidable legal term the first time it appears.
+3. Structure your response using exactly these five headings, in this order:
+
+Quick summary
+(2-3 sentences: what is this document, and what is the person about to agree to)
+
+What you're agreeing to
+(bulleted list of the concrete obligations, commitments, and rights the person gives up or gains)
+
+Red flags to watch for
+(bulleted list of clauses that are unusual, one-sided, risky, or costly — e.g. auto-renewal, hidden fees, broad data sharing, liability waivers, mandatory arbitration, unilateral changes, penalty clauses. If the document is genuinely clean, say so plainly instead of inventing risks.)
+
+Cancellation, refunds & fees
+(bulleted list of what it costs to get out, refund conditions, and any recurring charges. Say "Not specified in the document" if it truly isn't covered.)
+
+Questions worth asking before you sign
+(2-4 bulleted questions a sensible person would want answered)
+
+4. End with exactly this line on its own: "This is a plain-language summary to help you notice what matters. It is not legal advice — please read the full document and consult a lawyer for anything with real stakes."`;
+
 function extractPlaceholders(templateText) {
   const matches = templateText.match(/{{(.*?)}}/g) || [];
   return [...new Set(matches.map((m) => m.slice(2, -2)))];
@@ -354,6 +396,40 @@ function SourceChip({ s }) {
     <div className="source-chip border px-3 py-2 text-[12px] font-mono" style={{ borderColor: "#c9bfa0", background: "#f4efe1", color: "#3a3424" }}>
       <span className="font-semibold">{s.act}</span> — Sec. {s.section}
       <div className="mt-0.5" style={{ color: "#8a8062" }}>{s.title}</div>
+    </div>
+  );
+}
+
+function LanguageDropdown({ current, onSelect, open, onToggle }) {
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className="lang-toggle font-mono text-[11px] px-3 py-1.5 flex items-center gap-1.5"
+        style={{ borderRadius: 20, background: "#14213D", color: "#EDE6D6" }}
+      >
+        <Languages size={11} />
+        {LANGUAGES.find((l) => l.code === current)?.native || "English"}
+        <ChevronDown size={12} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 180ms ease" }} />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 mt-1.5 py-1.5 z-20 anim-fade-in"
+          style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 8, minWidth: 168, maxHeight: 280, overflowY: "auto", boxShadow: "0 16px 40px -14px rgba(0,0,0,0.4)" }}
+        >
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => onSelect(l.code)}
+              className="w-full text-left font-body text-[13px] px-3 py-1.5 flex items-baseline justify-between gap-2"
+              style={{ background: current === l.code ? "#e2d9bd" : "transparent", color: "#2a2618" }}
+            >
+              <span>{l.native}</span>
+              <span className="font-mono text-[10px] opacity-50">{l.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -460,11 +536,11 @@ function CaseFileDrawer({ open, onClose, entries, onLoad, onDelete, onClear }) {
                     style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 4 }}
                   >
                     <div className="flex items-center gap-1.5 mb-1 pr-6">
-                      {e.type === "explain" ? <Search size={11} style={{ color: "#A13D2C" }} /> : <FileText size={11} style={{ color: "#A13D2C" }} />}
-                      <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#A13D2C" }}>{e.type === "explain" ? "Explained" : `Drafted · ${TEMPLATES[e.templateKey]?.label}`}</span>
+                      {e.type === "explain" ? <Search size={11} style={{ color: "#A13D2C" }} /> : e.type === "simplify" ? <FileWarning size={11} style={{ color: "#A13D2C" }} /> : <FileText size={11} style={{ color: "#A13D2C" }} />}
+                      <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#A13D2C" }}>{e.type === "explain" ? "Explained" : e.type === "simplify" ? "Simplified" : `Drafted · ${TEMPLATES[e.templateKey]?.label}`}</span>
                       <span className="font-mono text-[10px] ml-auto flex items-center gap-1" style={{ color: "#a99f83" }}><Clock size={10} />{timeAgo(e.ts)}</span>
                     </div>
-                    <div className="font-body text-[13px] line-clamp-2" style={{ color: "#2a2618" }}>{e.input}</div>
+                    <div className="font-body text-[13px] line-clamp-2" style={{ color: "#2a2618" }}>{e.type === "simplify" ? (e.result?.fileName || e.input || "Pasted document") : e.input}</div>
                   </button>
                   <button
                     onClick={(ev) => { ev.stopPropagation(); onDelete(e.id); }}
@@ -640,6 +716,18 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [resultVersion, setResultVersion] = useState(0);
 
+  // simplify state (bulky documents / terms & conditions)
+  const [simplifyInput, setSimplifyInput] = useState("");
+  const [simplifyFileName, setSimplifyFileName] = useState(null);
+  const [simplifyLoading, setSimplifyLoading] = useState(false);
+  const [simplifyStage, setSimplifyStage] = useState(0);
+  const [simplifyResult, setSimplifyResult] = useState(null);
+  const [simplifyError, setSimplifyError] = useState(null);
+  const [simplifyVersion, setSimplifyVersion] = useState(0);
+  const [simplifyLang, setSimplifyLang] = useState("en");
+  const [simplifyTranslating, setSimplifyTranslating] = useState(false);
+  const [simplifyLangMenuOpen, setSimplifyLangMenuOpen] = useState(false);
+
   async function handleExplain() {
     if (!explainInput.trim()) return;
     setExplainLoading(true);
@@ -651,7 +739,7 @@ export default function App() {
       const sources = retrieve(explainInput, 4);
       if (sources.length === 0) {
         const fallback = {
-          answer: "This prototype's sample database (RTI Act, Consumer Protection Act, Payment of Wages Act) doesn't clearly cover this situation. This is general information, not legal advice. For anything with real stakes, please consult a lawyer.",
+          answer: "This prototype's sample database (RTI Act, Consumer Protection Act, Code on Wages, Constitution of India, Model Tenancy Act, Bharatiya Nyaya Sanhita, Domestic Violence Act, Motor Vehicles Act, Maternity Benefit Act) doesn't clearly cover this situation. This is general information, not legal advice. For anything with real stakes, please consult a lawyer.",
           sources: [],
           translations: {},
         };
@@ -760,6 +848,67 @@ export default function App() {
     setGenValues((prev) => ({ ...prev, [key]: val }));
   }
 
+  async function handleSimplify() {
+    if (!simplifyInput.trim()) return;
+    setSimplifyLoading(true);
+    setSimplifyError(null);
+    setSimplifyResult(null);
+    setSimplifyLang("en");
+    setSimplifyStage(0);
+    try {
+      setSimplifyStage(1);
+      const prompt = `DOCUMENT TEXT:\n${simplifyInput}\n\nAnalyze this document following the rules above.`;
+      setSimplifyStage(2);
+      const answer = await callAI(SIMPLIFY_SYSTEM, prompt, { maxTokens: 1800 });
+      setSimplifyStage(3);
+      const result = { answer, translations: {}, fileName: simplifyFileName };
+      setSimplifyResult(result);
+      setSimplifyVersion((v) => v + 1);
+      setCaseFile((prev) => [{ id: Date.now(), type: "simplify", ts: Date.now(), input: simplifyInput, result }, ...prev].slice(0, 25));
+    } catch (e) {
+      setSimplifyError(e.message || "Something went wrong reaching the AI. Try again.");
+    } finally {
+      setSimplifyLoading(false);
+    }
+  }
+
+  async function toggleSimplifyLang(code) {
+    setSimplifyLang(code);
+    if (code !== "en" && simplifyResult && !simplifyResult.translations?.[code]) {
+      const language = LANGUAGES.find((l) => l.code === code);
+      if (!language) return;
+      setSimplifyTranslating(true);
+      try {
+        const translated = await callAI(translateSystemFor(language), simplifyResult.answer);
+        setSimplifyResult((prev) => ({ ...prev, translations: { ...(prev.translations || {}), [code]: translated } }));
+      } catch (e) {
+        setSimplifyLang("en");
+        pushToast(`Couldn't translate into ${language.label} right now.`, "err");
+      } finally {
+        setSimplifyTranslating(false);
+      }
+    }
+  }
+
+  function handleSimplifyFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/\.(txt|md)$/i.test(file.name)) {
+      pushToast("Please upload a .txt file, or paste the text directly.", "err");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSimplifyInput(String(reader.result || ""));
+      setSimplifyFileName(file.name);
+      pushToast(`Loaded ${file.name}`);
+    };
+    reader.onerror = () => pushToast("Couldn't read that file.", "err");
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
   function copyDoc(text) {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -786,6 +935,13 @@ export default function App() {
       setExplainResult(entry.result);
       setExplainLang("en");
       setExplainVersion((v) => v + 1);
+    } else if (entry.type === "simplify") {
+      setTab("simplify");
+      setSimplifyInput(entry.input);
+      setSimplifyResult(entry.result);
+      setSimplifyFileName(entry.result?.fileName || null);
+      setSimplifyLang("en");
+      setSimplifyVersion((v) => v + 1);
     } else {
       setTab("generate");
       setTemplateKey(entry.templateKey);
@@ -938,6 +1094,7 @@ export default function App() {
           {[
             { key: "explain", label: "Explain", icon: Search },
             { key: "generate", label: "Draft a document", icon: FileText },
+            { key: "simplify", label: "Simplify a document", icon: FileWarning },
             { key: "library", label: "Library", icon: Library },
           ].map(({ key, label, icon: Icon }) => (
             <button
@@ -1228,6 +1385,100 @@ export default function App() {
                   <pre className="font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap p-5 anim-fade-in" style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 4, color: "#2a2618", animationDelay: "120ms" }}>
                     {filledDoc}
                   </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "simplify" && (
+            <div>
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <label htmlFor="simplify-input" className="font-mono text-[11px] uppercase tracking-wider" style={{ color: "#5a5342" }}>
+                  Paste the bulky document, contract, or terms &amp; conditions
+                </label>
+                <span className="font-mono text-[10px] flex items-center gap-1" style={{ color: "#a99f83" }}>
+                  <Command size={10} />+Enter to submit
+                </span>
+              </div>
+              <textarea
+                id="simplify-input"
+                value={simplifyInput}
+                onChange={(e) => { setSimplifyInput(e.target.value); setSimplifyFileName(null); }}
+                onKeyDown={(e) => onKeyDownSubmit(e, handleSimplify)}
+                placeholder="Paste the full text of the terms & conditions, rental agreement, loan contract, employment offer, app privacy policy — anything you're about to click 'I agree' on."
+                className="w-full font-body text-[13.5px] p-4 outline-none resize-none field-focus"
+                style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 4, minHeight: 180, color: "#2a2618" }}
+              />
+              <div className="flex items-center justify-between mt-2.5 flex-wrap gap-2">
+                <label
+                  htmlFor="simplify-file"
+                  className="btn-lift font-body text-[12px] px-3 py-1.5 flex items-center gap-1.5 cursor-pointer"
+                  style={{ border: "1px solid #c9bfa0", borderRadius: 4, color: "#5a5342", background: "transparent" }}
+                >
+                  <Upload size={12} /> Upload a .txt file instead
+                </label>
+                <input id="simplify-file" type="file" accept=".txt,.md" onChange={handleSimplifyFile} className="hidden" />
+                {simplifyFileName && (
+                  <span className="font-mono text-[11px]" style={{ color: "#8a8062" }}>Loaded: {simplifyFileName}</span>
+                )}
+                <span className="font-mono text-[10.5px] ml-auto" style={{ color: "#a99f83" }}>{wordCount(simplifyInput)} words</span>
+              </div>
+              <button
+                onClick={handleSimplify}
+                disabled={simplifyLoading || !simplifyInput.trim()}
+                className="btn-lift font-body text-[14px] font-medium mt-4 px-5 py-2.5 flex items-center gap-2 disabled:opacity-50"
+                style={{ background: "#14213D", color: "#EDE6D6", borderRadius: 4 }}
+              >
+                {simplifyLoading ? <Loader2 size={15} className="animate-spin" /> : <FileWarning size={15} />}
+                {simplifyLoading ? "Working" : "Break it down"}
+                {simplifyLoading && <span className="flex gap-0.5"><span className="dot" /><span className="dot" /><span className="dot" /></span>}
+              </button>
+              {simplifyLoading && <Stepper steps={["Reading document", "Consulting Saral", "Formatting"]} current={simplifyStage} />}
+
+              {simplifyError && (
+                <div className="mt-5 flex items-center gap-2 font-body text-[13px]" style={{ color: "#A13D2C" }}>
+                  <AlertTriangle size={15} /> {simplifyError}
+                </div>
+              )}
+
+              {simplifyResult && (
+                <div key={simplifyVersion} className="mt-7 pt-6 anim-fade-up" style={{ borderTop: "1px solid #c9bfa0" }}>
+                  <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
+                    <div className="flex items-center gap-2 anim-stamp">
+                      <div className="w-11 h-11 rounded-full border-2 flex items-center justify-center shrink-0" style={{ borderColor: "#A13D2C", color: "#A13D2C" }}>
+                        <FileWarning size={19} strokeWidth={2.5} />
+                      </div>
+                      <div className="leading-tight">
+                        <div className="font-mono text-[11px] uppercase tracking-wider" style={{ color: "#A13D2C" }}>Document, broken down</div>
+                        <div className="font-mono text-[11px]" style={{ color: "#5a5342" }}>What matters, before you agree</div>
+                      </div>
+                    </div>
+                    <LanguageDropdown
+                      current={simplifyLang}
+                      onSelect={(code) => { toggleSimplifyLang(code); setSimplifyLangMenuOpen(false); }}
+                      open={simplifyLangMenuOpen}
+                      onToggle={() => setSimplifyLangMenuOpen((v) => !v)}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 mb-4">
+                    <button onClick={() => copyDoc(simplifyLang !== "en" && simplifyResult.translations?.[simplifyLang] ? simplifyResult.translations[simplifyLang] : simplifyResult.answer)} className="btn-lift font-body text-[12px] px-3 py-1.5 flex items-center gap-1.5" style={{ border: "1px solid #c9bfa0", borderRadius: 4, color: "#2a2618", background: "#faf7ee" }}>
+                      <Copy size={13} /> Copy
+                    </button>
+                    <button onClick={() => downloadDoc(simplifyLang !== "en" && simplifyResult.translations?.[simplifyLang] ? simplifyResult.translations[simplifyLang] : simplifyResult.answer, "document-breakdown.txt")} className="btn-lift font-body text-[12px] px-3 py-1.5 flex items-center gap-1.5" style={{ border: "1px solid #c9bfa0", borderRadius: 4, color: "#2a2618", background: "#faf7ee" }}>
+                      <Download size={13} /> Download
+                    </button>
+                  </div>
+
+                  {simplifyTranslating ? (
+                    <div className="flex items-center gap-2 font-body text-[13px]" style={{ color: "#5a5342" }}>
+                      <Loader2 size={14} className="animate-spin" /> Translating…
+                    </div>
+                  ) : (
+                    <div className="font-body text-[14.5px] leading-relaxed whitespace-pre-wrap anim-fade-in" style={{ color: "#2a2618", animationDelay: "150ms" }}>
+                      {simplifyLang !== "en" && simplifyResult.translations?.[simplifyLang] ? simplifyResult.translations[simplifyLang] : simplifyResult.answer}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
