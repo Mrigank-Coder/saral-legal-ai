@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Scale, FileText, Search, Loader2, Copy, Download, AlertTriangle, CheckCircle2,
   BookOpen, Check, Folder, X, Languages, Sparkles, Clock, ChevronDown, Command, Library,
-  ShieldCheck, GitBranch, MessageSquareQuote, Trash2, ArrowRight,
+  ShieldCheck, GitBranch, MessageSquareQuote, Trash2, ArrowRight, FileWarning, Upload,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -108,6 +108,48 @@ const HOW_IT_WORKS = [
 const CASE_FILE_STORAGE_KEY = "saral.caseFile.v1";
 
 // ---------------------------------------------------------------------------
+// Languages — English plus four Indian languages, so people can read
+// results in the language they're actually comfortable in.
+// ---------------------------------------------------------------------------
+const LANGUAGES = [
+  { code: "en", label: "EN", name: "English" },
+  { code: "hi", label: "हिंदी", name: "Hindi" },
+  { code: "kn", label: "ಕನ್ನಡ", name: "Kannada" },
+  { code: "ta", label: "தமிழ்", name: "Tamil" },
+  { code: "te", label: "తెలుగు", name: "Telugu" },
+];
+
+function translateSystemPrompt(languageName) {
+  return `Translate the given plain-language legal text into simple, everyday ${languageName}, written in the native ${languageName} script, suitable for someone with basic literacy.
+Keep Act names, Section numbers, and document/clause references unchanged exactly as written (e.g. "RTI Act, Section 6" stays as is, do not translate it).
+Keep the same structure (headings, bullet points, line breaks).
+Output ONLY the translated text, nothing else — no preamble.`;
+}
+
+const SIMPLIFY_SYSTEM = `You help ordinary people understand long legal documents, contracts, or terms & conditions BEFORE they agree to them — the kind of document people usually scroll past and click "I agree" on.
+Rules:
+1. Base your analysis only on the document text provided. Do not assume facts not in the text.
+2. Write in plain, simple English. Briefly explain any unavoidable legal term the first time it appears.
+3. Structure your response using exactly these five headings, in this order:
+
+Quick summary
+(2-3 sentences: what is this document, and what is the person about to agree to)
+
+What you're agreeing to
+(bulleted list of the concrete obligations, commitments, and rights the person gives up or gains)
+
+Red flags to watch for
+(bulleted list of clauses that are unusual, one-sided, risky, or costly — e.g. auto-renewal, hidden fees, broad data sharing, liability waivers, mandatory arbitration, unilateral changes, penalty clauses. If the document is genuinely clean, say so plainly instead of inventing risks.)
+
+Cancellation, refunds & fees
+(bulleted list of what it costs to get out, refund conditions, and any recurring charges. Say "Not specified in the document" if it truly isn't covered.)
+
+Questions worth asking before you sign
+(2-4 bulleted questions a sensible person would want answered)
+
+4. End with exactly this line on its own: "This is a plain-language summary to help you notice what matters. It is not legal advice — please read the full document and consult a lawyer for anything with real stakes."`;
+
+// ---------------------------------------------------------------------------
 // Lightweight keyword retrieval (swap for embeddings once corpus grows)
 // ---------------------------------------------------------------------------
 const STOPWORDS = new Set(["the","a","an","and","or","of","to","in","for","is","was","my","me","i","it","on","with","that","this","by","from","at","as","be","has","have","not","got","no"]);
@@ -141,11 +183,11 @@ function formatContext(results) {
 // AI call — routed through our own backend (/api/ai) so the
 // API key stays server-side. See api/ai.js.
 // ---------------------------------------------------------------------------
-async function callAI(system, userPrompt) {
+async function callAI(system, userPrompt, maxTokens) {
   const res = await fetch("/api/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system, userPrompt }),
+    body: JSON.stringify({ system, userPrompt, maxTokens }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -163,11 +205,6 @@ Rules:
 4. Plain, simple English. Briefly explain any unavoidable legal term.
 5. Structure: "What this means" (2-3 sentences), "Relevant law" (bullets with citations), "Suggested next steps" (bullets).
 6. End with exactly: "This is general information, not legal advice. For anything with real stakes, please consult a lawyer."`;
-
-const TRANSLATE_SYSTEM = `Translate the given plain-language legal explanation into simple, everyday Hindi (Devanagari script), suitable for someone with basic literacy.
-Keep Act names and Section numbers unchanged exactly as written (e.g. "RTI Act, Section 6" stays as is, do not translate it).
-Keep the same structure (headings, bullet points, line breaks).
-Output ONLY the translated text, nothing else — no preamble.`;
 
 const EXTRACT_SYSTEM = `You extract structured field values from a user's plain-language description, to fill a legal document template.
 Rules:
@@ -254,6 +291,27 @@ function SourceChip({ s }) {
     <div className="source-chip border px-3 py-2 text-[12px] font-mono" style={{ borderColor: "#c9bfa0", background: "#f4efe1", color: "#3a3424" }}>
       <span className="font-semibold">{s.act}</span> — Sec. {s.section}
       <div className="mt-0.5" style={{ color: "#8a8062" }}>{s.title}</div>
+    </div>
+  );
+}
+
+function LanguageToggle({ current, onSelect }) {
+  return (
+    <div className="flex items-center gap-1 p-0.5 flex-wrap" style={{ background: "#e2d9bd", borderRadius: 20 }}>
+      {LANGUAGES.map((lang, i) => (
+        <button
+          key={lang.code}
+          onClick={() => onSelect(lang.code)}
+          className="lang-toggle font-mono text-[11px] px-3 py-1.5 flex items-center gap-1"
+          style={{
+            borderRadius: 20,
+            background: current === lang.code ? "#14213D" : "transparent",
+            color: current === lang.code ? "#EDE6D6" : "#5a5342",
+          }}
+        >
+          {i === 0 && <Languages size={11} />} {lang.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -360,11 +418,11 @@ function CaseFileDrawer({ open, onClose, entries, onLoad, onDelete, onClear }) {
                     style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 4 }}
                   >
                     <div className="flex items-center gap-1.5 mb-1 pr-6">
-                      {e.type === "explain" ? <Search size={11} style={{ color: "#A13D2C" }} /> : <FileText size={11} style={{ color: "#A13D2C" }} />}
-                      <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#A13D2C" }}>{e.type === "explain" ? "Explained" : `Drafted · ${TEMPLATES[e.templateKey]?.label}`}</span>
+                      {e.type === "explain" ? <Search size={11} style={{ color: "#A13D2C" }} /> : e.type === "simplify" ? <FileWarning size={11} style={{ color: "#A13D2C" }} /> : <FileText size={11} style={{ color: "#A13D2C" }} />}
+                      <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#A13D2C" }}>{e.type === "explain" ? "Explained" : e.type === "simplify" ? "Simplified" : `Drafted · ${TEMPLATES[e.templateKey]?.label}`}</span>
                       <span className="font-mono text-[10px] ml-auto flex items-center gap-1" style={{ color: "#a99f83" }}><Clock size={10} />{timeAgo(e.ts)}</span>
                     </div>
-                    <div className="font-body text-[13px] line-clamp-2" style={{ color: "#2a2618" }}>{e.input}</div>
+                    <div className="font-body text-[13px] line-clamp-2" style={{ color: "#2a2618" }}>{e.type === "simplify" ? (e.result?.fileName || e.input || "Pasted document") : e.input}</div>
                   </button>
                   <button
                     onClick={(ev) => { ev.stopPropagation(); onDelete(e.id); }}
@@ -533,6 +591,17 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [resultVersion, setResultVersion] = useState(0);
 
+  // simplify state (bulky documents / terms & conditions)
+  const [simplifyInput, setSimplifyInput] = useState("");
+  const [simplifyFileName, setSimplifyFileName] = useState(null);
+  const [simplifyLoading, setSimplifyLoading] = useState(false);
+  const [simplifyStage, setSimplifyStage] = useState(0);
+  const [simplifyResult, setSimplifyResult] = useState(null);
+  const [simplifyError, setSimplifyError] = useState(null);
+  const [simplifyVersion, setSimplifyVersion] = useState(0);
+  const [simplifyLang, setSimplifyLang] = useState("en");
+  const [simplifyTranslating, setSimplifyTranslating] = useState(false);
+
   async function handleExplain() {
     if (!explainInput.trim()) return;
     setExplainLoading(true);
@@ -546,7 +615,7 @@ export default function App() {
         const fallback = {
           answer: "This prototype's sample database (RTI Act, Consumer Protection Act, Payment of Wages Act) doesn't clearly cover this situation. This is general information, not legal advice. For anything with real stakes, please consult a lawyer.",
           sources: [],
-          hi: null,
+          translations: {},
         };
         setExplainResult(fallback);
         setExplainVersion((v) => v + 1);
@@ -560,7 +629,7 @@ export default function App() {
       setExplainStage(2);
       const answer = await callAI(EXPLAIN_SYSTEM, prompt);
       setExplainStage(3);
-      const result = { answer, sources, hi: null };
+      const result = { answer, sources, translations: {} };
       setExplainResult(result);
       setExplainVersion((v) => v + 1);
       setCaseFile((prev) => [{ id: Date.now(), type: "explain", ts: Date.now(), input: explainInput, result }, ...prev].slice(0, 25));
@@ -573,11 +642,12 @@ export default function App() {
 
   async function toggleLang(lang) {
     setExplainLang(lang);
-    if (lang === "hi" && explainResult && !explainResult.hi) {
+    if (lang !== "en" && explainResult && !explainResult.translations?.[lang]) {
       setTranslating(true);
       try {
-        const hi = await callAI(TRANSLATE_SYSTEM, explainResult.answer);
-        setExplainResult((prev) => ({ ...prev, hi }));
+        const langMeta = LANGUAGES.find((l) => l.code === lang);
+        const translated = await callAI(translateSystemPrompt(langMeta.name), explainResult.answer);
+        setExplainResult((prev) => ({ ...prev, translations: { ...prev.translations, [lang]: translated } }));
       } catch (e) {
         setExplainLang("en");
         pushToast("Couldn't translate right now.", "err");
@@ -624,6 +694,66 @@ export default function App() {
     setGenValues((prev) => ({ ...prev, [key]: val }));
   }
 
+  async function handleSimplify() {
+    if (!simplifyInput.trim()) return;
+    setSimplifyLoading(true);
+    setSimplifyError(null);
+    setSimplifyResult(null);
+    setSimplifyLang("en");
+    setSimplifyStage(0);
+    try {
+      setSimplifyStage(1);
+      const prompt = `DOCUMENT TEXT:\n${simplifyInput}\n\nAnalyze this document following the rules above.`;
+      setSimplifyStage(2);
+      const answer = await callAI(SIMPLIFY_SYSTEM, prompt, 1800);
+      setSimplifyStage(3);
+      const result = { answer, translations: {}, fileName: simplifyFileName };
+      setSimplifyResult(result);
+      setSimplifyVersion((v) => v + 1);
+      setCaseFile((prev) => [{ id: Date.now(), type: "simplify", ts: Date.now(), input: simplifyInput, result }, ...prev].slice(0, 25));
+    } catch (e) {
+      setSimplifyError(e.message || "Something went wrong reaching the AI. Try again.");
+    } finally {
+      setSimplifyLoading(false);
+    }
+  }
+
+  async function toggleSimplifyLang(lang) {
+    setSimplifyLang(lang);
+    if (lang !== "en" && simplifyResult && !simplifyResult.translations?.[lang]) {
+      setSimplifyTranslating(true);
+      try {
+        const langMeta = LANGUAGES.find((l) => l.code === lang);
+        const translated = await callAI(translateSystemPrompt(langMeta.name), simplifyResult.answer);
+        setSimplifyResult((prev) => ({ ...prev, translations: { ...prev.translations, [lang]: translated } }));
+      } catch (e) {
+        setSimplifyLang("en");
+        pushToast("Couldn't translate right now.", "err");
+      } finally {
+        setSimplifyTranslating(false);
+      }
+    }
+  }
+
+  function handleSimplifyFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/\.(txt|md)$/i.test(file.name)) {
+      pushToast("Please upload a .txt file, or paste the text directly.", "err");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSimplifyInput(String(reader.result || ""));
+      setSimplifyFileName(file.name);
+      pushToast(`Loaded ${file.name}`);
+    };
+    reader.onerror = () => pushToast("Couldn't read that file.", "err");
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
   function copyDoc(text) {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -650,6 +780,13 @@ export default function App() {
       setExplainResult(entry.result);
       setExplainLang("en");
       setExplainVersion((v) => v + 1);
+    } else if (entry.type === "simplify") {
+      setTab("simplify");
+      setSimplifyInput(entry.input);
+      setSimplifyResult(entry.result);
+      setSimplifyFileName(entry.result?.fileName || null);
+      setSimplifyLang("en");
+      setSimplifyVersion((v) => v + 1);
     } else {
       setTab("generate");
       setTemplateKey(entry.templateKey);
@@ -781,7 +918,7 @@ export default function App() {
             <p className="font-mono text-[11px] tracking-[0.15em] uppercase mt-1" style={{ color: "#8a92ab" }}>सरल · simple, by design</p>
             <p className="font-body mt-4 max-w-xl text-[15px] leading-relaxed" style={{ color: "#B9AF95" }}>
               Every clause has an answer buried in it somewhere. You shouldn't need a law degree to find it —
-              you should need a search engine that cites its sources. Explain a document, or draft one, grounded in the actual text of the law.
+              you should need a search engine that cites its sources. Explain a situation, draft a document, or break down the fine print you're about to sign — grounded in the actual text, in the language you actually read.
             </p>
           </div>
           <button
@@ -802,6 +939,7 @@ export default function App() {
           {[
             { key: "explain", label: "Explain", icon: Search },
             { key: "generate", label: "Draft a document", icon: FileText },
+            { key: "simplify", label: "Simplify a document", icon: FileWarning },
             { key: "library", label: "Library", icon: Library },
           ].map(({ key, label, icon: Icon }) => (
             <button
@@ -889,14 +1027,7 @@ export default function App() {
                   <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
                     <div className="anim-stamp"><Seal count={explainResult.sources.length} /></div>
                     {explainResult.sources.length > 0 && (
-                      <div className="flex items-center gap-1 p-0.5" style={{ background: "#e2d9bd", borderRadius: 20 }}>
-                        <button onClick={() => toggleLang("en")} className="lang-toggle font-mono text-[11px] px-3 py-1.5 flex items-center gap-1" style={{ borderRadius: 20, background: explainLang === "en" ? "#14213D" : "transparent", color: explainLang === "en" ? "#EDE6D6" : "#5a5342" }}>
-                          <Languages size={11} /> EN
-                        </button>
-                        <button onClick={() => toggleLang("hi")} className="lang-toggle font-mono text-[11px] px-3 py-1.5" style={{ borderRadius: 20, background: explainLang === "hi" ? "#14213D" : "transparent", color: explainLang === "hi" ? "#EDE6D6" : "#5a5342" }}>
-                          हिंदी
-                        </button>
-                      </div>
+                      <LanguageToggle current={explainLang} onSelect={toggleLang} />
                     )}
                   </div>
 
@@ -910,7 +1041,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="font-body text-[14.5px] leading-relaxed whitespace-pre-wrap anim-fade-in" style={{ color: "#2a2618", animationDelay: "150ms" }}>
-                      {explainLang === "hi" && explainResult.hi ? explainResult.hi : explainResult.answer}
+                      {explainLang !== "en" && explainResult.translations?.[explainLang] ? explainResult.translations[explainLang] : explainResult.answer}
                     </div>
                   )}
 
@@ -1037,6 +1168,95 @@ export default function App() {
                   <pre className="font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap p-5 anim-fade-in" style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 4, color: "#2a2618", animationDelay: "120ms" }}>
                     {filledDoc}
                   </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "simplify" && (
+            <div>
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <label htmlFor="simplify-input" className="font-mono text-[11px] uppercase tracking-wider" style={{ color: "#5a5342" }}>
+                  Paste the bulky document, contract, or terms &amp; conditions
+                </label>
+                <span className="font-mono text-[10px] flex items-center gap-1" style={{ color: "#a99f83" }}>
+                  <Command size={10} />+Enter to submit
+                </span>
+              </div>
+              <textarea
+                id="simplify-input"
+                value={simplifyInput}
+                onChange={(e) => { setSimplifyInput(e.target.value); setSimplifyFileName(null); }}
+                onKeyDown={(e) => onKeyDownSubmit(e, handleSimplify)}
+                placeholder="Paste the full text of the terms & conditions, rental agreement, loan contract, employment offer, app privacy policy — anything you're about to click 'I agree' on."
+                className="w-full font-body text-[13.5px] p-4 outline-none resize-none field-focus"
+                style={{ background: "#faf7ee", border: "1px solid #c9bfa0", borderRadius: 4, minHeight: 180, color: "#2a2618" }}
+              />
+              <div className="flex items-center justify-between mt-2.5 flex-wrap gap-2">
+                <label
+                  htmlFor="simplify-file"
+                  className="btn-lift font-body text-[12px] px-3 py-1.5 flex items-center gap-1.5 cursor-pointer"
+                  style={{ border: "1px solid #c9bfa0", borderRadius: 4, color: "#5a5342", background: "transparent" }}
+                >
+                  <Upload size={12} /> Upload a .txt file instead
+                </label>
+                <input id="simplify-file" type="file" accept=".txt,.md" onChange={handleSimplifyFile} className="hidden" />
+                {simplifyFileName && (
+                  <span className="font-mono text-[11px]" style={{ color: "#8a8062" }}>Loaded: {simplifyFileName}</span>
+                )}
+                <span className="font-mono text-[10.5px] ml-auto" style={{ color: "#a99f83" }}>{wordCount(simplifyInput)} words</span>
+              </div>
+              <button
+                onClick={handleSimplify}
+                disabled={simplifyLoading || !simplifyInput.trim()}
+                className="btn-lift font-body text-[14px] font-medium mt-4 px-5 py-2.5 flex items-center gap-2 disabled:opacity-50"
+                style={{ background: "#14213D", color: "#EDE6D6", borderRadius: 4 }}
+              >
+                {simplifyLoading ? <Loader2 size={15} className="animate-spin" /> : <FileWarning size={15} />}
+                {simplifyLoading ? "Working" : "Break it down"}
+                {simplifyLoading && <span className="flex gap-0.5"><span className="dot" /><span className="dot" /><span className="dot" /></span>}
+              </button>
+              {simplifyLoading && <Stepper steps={["Reading document", "Consulting Saral", "Formatting"]} current={simplifyStage} />}
+
+              {simplifyError && (
+                <div className="mt-5 flex items-center gap-2 font-body text-[13px]" style={{ color: "#A13D2C" }}>
+                  <AlertTriangle size={15} /> {simplifyError}
+                </div>
+              )}
+
+              {simplifyResult && (
+                <div key={simplifyVersion} className="mt-7 pt-6 anim-fade-up" style={{ borderTop: "1px solid #c9bfa0" }}>
+                  <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
+                    <div className="flex items-center gap-2 anim-stamp">
+                      <div className="w-11 h-11 rounded-full border-2 flex items-center justify-center shrink-0" style={{ borderColor: "#A13D2C", color: "#A13D2C" }}>
+                        <FileWarning size={19} strokeWidth={2.5} />
+                      </div>
+                      <div className="leading-tight">
+                        <div className="font-mono text-[11px] uppercase tracking-wider" style={{ color: "#A13D2C" }}>Document, broken down</div>
+                        <div className="font-mono text-[11px]" style={{ color: "#5a5342" }}>What matters, before you agree</div>
+                      </div>
+                    </div>
+                    <LanguageToggle current={simplifyLang} onSelect={toggleSimplifyLang} />
+                  </div>
+
+                  <div className="flex justify-end gap-2 mb-4">
+                    <button onClick={() => copyDoc(simplifyLang !== "en" && simplifyResult.translations?.[simplifyLang] ? simplifyResult.translations[simplifyLang] : simplifyResult.answer)} className="btn-lift font-body text-[12px] px-3 py-1.5 flex items-center gap-1.5" style={{ border: "1px solid #c9bfa0", borderRadius: 4, color: "#2a2618", background: "#faf7ee" }}>
+                      <Copy size={13} /> Copy
+                    </button>
+                    <button onClick={() => downloadDoc(simplifyLang !== "en" && simplifyResult.translations?.[simplifyLang] ? simplifyResult.translations[simplifyLang] : simplifyResult.answer, "document-breakdown.txt")} className="btn-lift font-body text-[12px] px-3 py-1.5 flex items-center gap-1.5" style={{ border: "1px solid #c9bfa0", borderRadius: 4, color: "#2a2618", background: "#faf7ee" }}>
+                      <Download size={13} /> Download
+                    </button>
+                  </div>
+
+                  {simplifyTranslating ? (
+                    <div className="flex items-center gap-2 font-body text-[13px]" style={{ color: "#5a5342" }}>
+                      <Loader2 size={14} className="animate-spin" /> Translating…
+                    </div>
+                  ) : (
+                    <div className="font-body text-[14.5px] leading-relaxed whitespace-pre-wrap anim-fade-in" style={{ color: "#2a2618", animationDelay: "150ms" }}>
+                      {simplifyLang !== "en" && simplifyResult.translations?.[simplifyLang] ? simplifyResult.translations[simplifyLang] : simplifyResult.answer}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
